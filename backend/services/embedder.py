@@ -15,7 +15,6 @@ def get_model():
 def get_chroma_client():
     global chroma_client
     if chroma_client is None:
-        # ✅ persistent storage (important)
         chroma_client = chromadb.PersistentClient(path="./chroma_db")
     return chroma_client
 
@@ -26,7 +25,7 @@ def get_collection(video_id: str):
 
 
 def embed_and_store(video_id: str, chunks: list):
-    model = get_model()
+    embedding_model = get_model()
     collection = get_collection(video_id)
 
     existing = collection.count()
@@ -46,7 +45,7 @@ def embed_and_store(video_id: str, chunks: list):
 
     ids = [f"{video_id}_{i}" for i in range(len(chunks))]
 
-    embeddings = model.encode(texts).tolist()
+    embeddings = embedding_model.encode(texts).tolist()
 
     collection.add(
         documents=texts,
