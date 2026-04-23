@@ -1,27 +1,31 @@
 import re
-from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 
 
 def extract_video_id(url: str) -> str:
-    patterns = [
-        r"v=([a-zA-Z0-9_-]+)",
-        r"youtu\.be/([a-zA-Z0-9_-]+)"
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-
-    raise ValueError("Invalid YouTube URL")
+    pattern = r"(?:v=|\/)([0-9A-Za-z_-]{11}).*"
+    match = re.search(pattern, url)
+    if not match:
+        raise Exception("Invalid YouTube URL")
+    return match.group(1)
 
 
 def get_transcript(video_id: str):
     try:
         api = YouTubeTranscriptApi()
-        transcript = api.fetch(video_id)
 
-        # Convert transcript objects into simple dicts
+        # try English first
+        try:
+            transcript = api.fetch(video_id, languages=["en"])
+        except NoTranscriptFound:
+            try:
+                transcript = api.fetch(video_id, languages=["en-US", "en-GB"])
+            except NoTranscriptFound:
+                transcript_list = api.list_transcripts(video_id)
+                first_available = next(iter(transcript_list))
+                transcript = first_available.fetch()
+
         return [
             {
                 "text": t.text,
@@ -33,9 +37,5 @@ def get_transcript(video_id: str):
 
     except TranscriptsDisabled:
         raise Exception("Transcripts are disabled for this video")
-
-    except NoTranscriptFound:
-        raise Exception("No transcript found for this video")
-
     except Exception as e:
         raise Exception(f"Error fetching transcript: {str(e)}")
