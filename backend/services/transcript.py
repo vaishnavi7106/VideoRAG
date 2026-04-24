@@ -1,6 +1,5 @@
 import re
-from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 
 
 def extract_video_id(url: str) -> str:
@@ -15,7 +14,6 @@ def get_transcript(video_id: str):
     try:
         api = YouTubeTranscriptApi()
 
-        # try English first
         try:
             transcript = api.fetch(video_id, languages=["en"])
         except NoTranscriptFound:
