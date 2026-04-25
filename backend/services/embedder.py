@@ -44,7 +44,6 @@ def embed_and_store(video_id: str, chunks: list):
     ]
 
     ids = [f"{video_id}_{i}" for i in range(len(chunks))]
-
     embeddings = embedding_model.encode(texts).tolist()
 
     collection.add(
