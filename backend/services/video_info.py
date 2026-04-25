@@ -1,0 +1,22 @@
+import yt_dlp
+
+
+def get_video_info(url: str) -> dict:
+    try:
+        ydl_opts = {
+            "quiet": True,
+            "skip_download": True
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return {
+                "title": info.get("title", "Unknown Video"),
+                "thumbnail": info.get("thumbnail", "")
+            }
+
+    except Exception:
+        return {
+            "title": "Unknown Video",
+            "thumbnail": ""
+        }
