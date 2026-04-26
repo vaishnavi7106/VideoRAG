@@ -7,20 +7,19 @@ import LandingPage from './pages/LandingPage'
 import WorkspacePage from './pages/WorkspacePage'
 
 export default function App() {
-  const { dark, toggle } = useTheme()
+  useTheme() // initialize dark mode
   const videoStore = useVideoStore()
   const sessions = useSessions()
-  const [page, setPage] = useState('landing') // 'landing' | 'workspace'
+  const [page, setPage] = useState('landing')
   const [showModal, setShowModal] = useState(false)
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {page === 'workspace' && (
         <Topbar
-          dark={dark}
-          toggleDark={toggle}
           showWorkspace
           onAddVideo={() => setShowModal(true)}
+          onGoHome={() => setPage('landing')}
         />
       )}
       <div style={{ flex: 1, overflow: 'hidden' }}>

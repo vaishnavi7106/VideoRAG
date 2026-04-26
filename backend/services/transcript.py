@@ -20,20 +20,26 @@ def get_transcript(video_id: str):
             try:
                 transcript = api.fetch(video_id, languages=["en-US", "en-GB"])
             except NoTranscriptFound:
-                transcript_list = api.list_transcripts(video_id)
+                # fallback: get whatever language is available
+                transcript_list = api.list(video_id)
                 first_available = next(iter(transcript_list))
                 transcript = first_available.fetch()
 
         return [
             {
-                "text": t.text,
-                "start": t.start,
-                "duration": t.duration
+                "text": snippet.text,
+                "start": snippet.start,
+                "duration": snippet.duration
             }
-            for t in transcript
+            for snippet in transcript
         ]
 
     except TranscriptsDisabled:
-        raise Exception("Transcripts are disabled for this video")
+        raise Exception("Transcripts are disabled for this video. Try a different video.")
+    except StopIteration:
+        raise Exception("No transcripts available for this video.")
     except Exception as e:
-        raise Exception(f"Error fetching transcript: {str(e)}")
+        msg = str(e)
+        if "no element found" in msg.lower() or "list_transcripts" in msg.lower():
+            raise Exception("Could not fetch transcript. The video may be private, age-restricted, or have no captions.")
+        raise Exception(f"Could not fetch transcript: {msg}")

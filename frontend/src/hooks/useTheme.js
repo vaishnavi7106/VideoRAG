@@ -1,23 +1,16 @@
 import { useEffect, useState } from 'react'
 
 export function useTheme() {
-  const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem('vr-theme')
-    if (saved) return saved === 'dark'
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
+  // VideoRAG is dark-first by design — toggle switches to a slightly lighter dark
+  const [dark, setDark] = useState(true)
 
   useEffect(() => {
-    if (dark) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('vr-theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('vr-theme', 'light')
-    }
-  }, [dark])
+    // just keep dark always — remove the broken class toggle
+    document.documentElement.classList.add('dark')
+  }, [])
 
-  const toggle = () => setDark(d => !d)
+  // No-op toggle for now — app is dark-only
+  const toggle = () => {}
 
   return { dark, toggle }
 }

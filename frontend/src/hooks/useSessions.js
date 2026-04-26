@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 
-const KEY = 'vr-sessions-v2'
-const MAX_SESSIONS = 30
+const KEY = 'vr-sessions-v4'
+const MAX_SESSIONS = 40
 
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY)) || [] }
@@ -9,23 +9,27 @@ function load() {
 }
 
 function save(sessions) {
-  localStorage.setItem(KEY, JSON.stringify(sessions))
+  try { localStorage.setItem(KEY, JSON.stringify(sessions)) }
+  catch (e) { console.warn('Session save failed', e) }
 }
 
 export function useSessions() {
   const [sessions, setSessions] = useState(load)
   const [activeSessionId, setActiveSessionId] = useState(null)
 
-  const createSession = useCallback((videoIds, videoTitles) => {
-    const id = `session_${Date.now()}`
+  const createSession = useCallback((videoIds, videoMeta, videoData) => {
+    // videoMeta: [{video_id, video_title, thumbnail}]
+    // videoData: full video objects including summary, key_sections, worth_watching
+    const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
     const session = {
       id,
       videoIds,
-      videoTitles,
+      videoMeta: videoMeta || [],
+      videoData: videoData || [],  // ← full video objects stored here
       messages: [],
+      title: null,
       createdAt: Date.now(),
-      updatedAt: Date.now(),
-      title: null // set from first question
+      updatedAt: Date.now()
     }
     setSessions(prev => {
       const next = [session, ...prev].slice(0, MAX_SESSIONS)
@@ -40,11 +44,16 @@ export function useSessions() {
     setSessions(prev => {
       const next = prev.map(s => {
         if (s.id !== sessionId) return s
-        const messages = [...s.messages, message]
-        // use first user question as session title
-        const title = s.title || (message.role === 'user' ? message.content : null)
-        return { ...s, messages, title, updatedAt: Date.now() }
+        return { ...s, messages: [...s.messages, message], updatedAt: Date.now() }
       })
+      save(next)
+      return next
+    })
+  }, [])
+
+  const updateTitle = useCallback((sessionId, title) => {
+    setSessions(prev => {
+      const next = prev.map(s => s.id === sessionId ? { ...s, title } : s)
       save(next)
       return next
     })
@@ -67,17 +76,14 @@ export function useSessions() {
 
   const activeSession = sessions.find(s => s.id === activeSessionId) || null
 
-  // group sessions by date
   const groupedSessions = sessions.reduce((acc, session) => {
-    const now = Date.now()
-    const diff = now - session.updatedAt
+    const diff = Date.now() - session.updatedAt
     const day = 86400000
     let group
     if (diff < day) group = 'Today'
     else if (diff < 2 * day) group = 'Yesterday'
     else if (diff < 7 * day) group = 'This week'
     else group = 'Older'
-
     if (!acc[group]) acc[group] = []
     acc[group].push(session)
     return acc
@@ -91,6 +97,7 @@ export function useSessions() {
     setActiveSessionId,
     createSession,
     appendMessage,
+    updateTitle,
     deleteSession,
     clearAllSessions
   }

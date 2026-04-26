@@ -17,18 +17,27 @@ export const summarizeVideo = (url, summaryMode = 'concise') =>
   post('/summarize', { url, summary_mode: summaryMode })
 
 export const askQuestion = (urls, question, answerMode = 'concise', conversationHistory = []) =>
-  post('/ask', {
-    urls,
-    question,
-    answer_mode: answerMode,
-    conversation_history: conversationHistory
-  })
+  post('/ask', { urls, question, answer_mode: answerMode, conversation_history: conversationHistory })
 
 export const searchVideo = (url, query, topK = 8) =>
   post('/search', { url, query, top_k: topK })
 
+export const explainSearchResult = (query, chunkText, startTime, endTime) =>
+  post('/search-explain', {
+    query,
+    chunk_text: chunkText,
+    start_time: startTime,
+    end_time: endTime
+  })
+
 export const fetchStudy = (url) =>
   post('/study', { url })
+
+export const generateSessionTitle = (firstQuestion, videoTitles = []) =>
+  post('/generate-title', { first_question: firstQuestion, video_titles: videoTitles })
+
+export const getTranscript = (url) =>
+  post('/transcript', { url })
 
 export const healthCheck = () =>
   fetch(`${BASE}/`).then(r => r.json())
