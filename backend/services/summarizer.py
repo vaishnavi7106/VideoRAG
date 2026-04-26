@@ -134,3 +134,72 @@ Video Content:
             "summary": response.strip(),
             "key_sections": []
         }
+
+
+def generate_worth_watching(chunks: list, video_title: str) -> dict:
+    """
+    Generates a quick 'is this worth watching?' verdict.
+    Uses only the first few chunks — fast, cheap, runs before full summarization.
+    """
+    if not chunks:
+        return {
+            "verdict": "Could not determine.",
+            "target_audience": "Unknown",
+            "covers": [],
+            "skips": [],
+            "watch_if": ""
+        }
+
+    # only use first 3 chunks — fast signal
+    early_chunks = chunks[:3]
+    context = " ".join([c["text"] for c in early_chunks])
+
+    prompt = f"""You are a video scout helping someone decide if a video is worth their time.
+
+Based on the opening content of this video, produce a quick verdict.
+
+Video title: {video_title}
+
+Rules:
+1. Use ONLY the provided content
+2. Be honest — if the video seems shallow or slow, say so
+3. "covers" must be specific topics, not vague categories
+4. "skips" should be things a viewer might expect but won't find
+5. "watch_if" is one sentence describing the ideal viewer
+
+Return ONLY valid JSON. No markdown, no backticks.
+
+Format:
+{{
+  "verdict": "One sentence verdict — is this worth watching and for whom?",
+  "target_audience": "Who this is best for (e.g. complete beginners, intermediate devs)",
+  "covers": ["specific topic 1", "specific topic 2", "specific topic 3"],
+  "skips": ["thing not covered 1", "thing not covered 2"],
+  "watch_if": "Watch this if you..."
+}}
+
+Video opening content:
+{context}"""
+
+    completion = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=300,
+        temperature=0.0
+    )
+
+    response = completion.choices[0].message.content.strip()
+    response = re.sub(r"^```json", "", response)
+    response = re.sub(r"^```", "", response)
+    response = re.sub(r"```$", "", response)
+
+    try:
+        return json.loads(response.strip())
+    except Exception:
+        return {
+            "verdict": response.strip(),
+            "target_audience": "",
+            "covers": [],
+            "skips": [],
+            "watch_if": ""
+        }
