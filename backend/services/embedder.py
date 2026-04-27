@@ -15,7 +15,7 @@ def get_model():
 def get_chroma_client():
     global chroma_client
     if chroma_client is None:
-        chroma_client = chromadb.PersistentClient(path="./chroma_db")
+        chroma_client = chromadb.EphemeralClient()
     return chroma_client
 
 
