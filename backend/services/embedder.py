@@ -1,5 +1,6 @@
 from sentence_transformers import SentenceTransformer
 import chromadb
+import os
 
 model = None
 chroma_client = None
@@ -15,13 +16,17 @@ def get_model():
 def get_chroma_client():
     global chroma_client
     if chroma_client is None:
-        chroma_client = chromadb.EphemeralClient()
+        # use persistent storage locally, ephemeral on HF Spaces
+        if os.getenv("HF_SPACE", "false").lower() == "true":
+            chroma_client = chromadb.EphemeralClient()
+        else:
+            chroma_client = chromadb.PersistentClient(path="./chroma_db")
     return chroma_client
 
 
 def get_collection(video_id: str):
     client = get_chroma_client()
-    return client.get_or_create_collection(name=video_id)
+    return client.get_or_create_collection(name=f"v_{video_id}")
 
 
 def embed_and_store(video_id: str, chunks: list):
@@ -33,7 +38,6 @@ def embed_and_store(video_id: str, chunks: list):
         return {"status": "cached", "chunks": existing}
 
     texts = [chunk["text"] for chunk in chunks]
-
     metadatas = [
         {
             "start_time": chunk["start_time"],
@@ -42,7 +46,6 @@ def embed_and_store(video_id: str, chunks: list):
         }
         for chunk in chunks
     ]
-
     ids = [f"{video_id}_{i}" for i in range(len(chunks))]
     embeddings = embedding_model.encode(texts).tolist()
 
