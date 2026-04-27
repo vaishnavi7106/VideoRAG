@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import LeftSidebar from '../components/LeftSidebar'
 import ChatPanel from '../components/ChatPanel'
 import SummaryTab from '../components/tabs/SummaryTab'
@@ -11,7 +11,6 @@ import { useStudy } from '../hooks/useStudy'
 
 const TABS = ['Summary', 'Search', 'Study']
 
-// Out-of-context messages that should never hit the backend
 const OUT_OF_CONTEXT = new Set([
   'hi', 'hello', 'hey', 'hii', 'hiii', 'sup', 'yo', 'hola',
   'thanks', 'thank you', 'ok', 'okay', 'cool', 'nice', 'good',
@@ -24,9 +23,11 @@ function isOutOfContext(question) {
   if (OUT_OF_CONTEXT.has(q)) return true
   const words = q.split(' ')
   if (words.length <= 2) {
-    const hasQuestionWord = ['who', 'what', 'when', 'where', 'why', 'how',
-      'did', 'does', 'is', 'are', 'was', 'were', 'can', 'could',
-      'would', 'should', 'will'].some(w => words.includes(w))
+    const hasQuestionWord = [
+      'who', 'what', 'when', 'where', 'why', 'how',
+      'did', 'does', 'is', 'are', 'was', 'were',
+      'can', 'could', 'would', 'should', 'will'
+    ].some(w => words.includes(w))
     return !hasQuestionWord
   }
   return false
@@ -91,45 +92,54 @@ export default function WorkspacePage({
     setActiveTab('Summary')
   }
 
-  // ── session switching — restores videos from session's stored data ──
+  // ── new conversation: clear everything ──
+  function handleNewSession() {
+    setActiveSessionId(null)
+    clearVideos()           // ← clears videos panel
+    search.clear()          // ← clears search state
+    study.reset()           // ← clears study state
+    setActiveTab('Summary')
+  }
+
+  // ── session switching: restore that session's videos ──
   function handleSelectSession(id) {
     const session = sessionList.find(s => s.id === id)
     if (!session) return
 
     setActiveSessionId(id)
 
-    // restore videos from the session's stored videoData
     if (session.videoData?.length > 0) {
-      // clear current videos and reload from session
       clearVideos()
       session.videoData.forEach(vid => {
         addVideo({ ...vid, status: 'ready' })
       })
-      // set active video to first one in session
       if (session.videoData[0]?.video_id) {
         setActiveVideoId(session.videoData[0].video_id)
       }
     }
 
     setActiveTab('Summary')
-  }
-
-  function handleNewSession() {
-    setActiveSessionId(null)
-    // don't clear videos — user may want to ask a new question about same videos
+    search.clear()
+    study.reset()
   }
 
   async function handleAsk(question) {
     if (!question.trim() || asking) return
 
-    // ── out-of-context guard ──
+    // out-of-context guard
     if (isOutOfContext(question)) {
-      const reply = OUT_OF_CONTEXT_REPLIES[Math.floor(Math.random() * OUT_OF_CONTEXT_REPLIES.length)]
+      const reply = OUT_OF_CONTEXT_REPLIES[
+        Math.floor(Math.random() * OUT_OF_CONTEXT_REPLIES.length)
+      ]
       let sessionId = activeSessionId
       if (!sessionId) {
         sessionId = createSession(
           readyVideos.map(v => v.video_id),
-          readyVideos.map(v => ({ video_id: v.video_id, video_title: v.video_title, thumbnail: v.thumbnail })),
+          readyVideos.map(v => ({
+            video_id: v.video_id,
+            video_title: v.video_title,
+            thumbnail: v.thumbnail
+          })),
           readyVideos
         )
       }
@@ -140,7 +150,6 @@ export default function WorkspacePage({
 
     if (urls.length === 0) return
 
-    // ── create session ──
     let sessionId = activeSessionId
     const isNewSession = !sessionId
 
@@ -152,7 +161,7 @@ export default function WorkspacePage({
           video_title: v.video_title,
           thumbnail: v.thumbnail
         })),
-        readyVideos  // ← store full video data for later restoration
+        readyVideos
       )
     }
 
@@ -161,7 +170,8 @@ export default function WorkspacePage({
     setAsking(true)
 
     const history = (activeSession?.messages || []).map(m => ({
-      role: m.role, content: m.content
+      role: m.role,
+      content: m.content
     }))
 
     try {
@@ -175,7 +185,6 @@ export default function WorkspacePage({
       }
       appendMessage(sessionId, assistantMsg)
 
-      // generate title async — non-blocking
       if (isNewSession) {
         generateSessionTitleApi(question, readyVideos.map(v => v.video_title))
           .then(result => { if (result?.title) updateTitle(sessionId, result.title) })
@@ -223,22 +232,26 @@ export default function WorkspacePage({
         overflow: 'hidden', borderRight: '1px solid var(--border)',
         background: 'var(--ink)', position: 'relative'
       }}>
-        {/* tab bar */}
+        {/* tab bar — with transcript download inline */}
         <div style={{
           height: 44, display: 'flex', alignItems: 'center',
           padding: '0 6px', borderBottom: '1px solid var(--border)',
           background: 'var(--ink-2)', flexShrink: 0, gap: 2
         }}>
           {TABS.map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              height: 34, padding: '0 14px',
-              borderRadius: 'var(--radius-md)', border: 'none',
-              background: activeTab === tab ? 'var(--ink-3)' : 'transparent',
-              color: activeTab === tab ? 'var(--text)' : 'var(--text-3)',
-              fontSize: 13, fontWeight: activeTab === tab ? 500 : 400,
-              cursor: 'pointer', fontFamily: 'var(--font-sans)',
-              transition: 'all var(--transition)', position: 'relative'
-            }}>
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                height: 34, padding: '0 14px',
+                borderRadius: 'var(--radius-md)', border: 'none',
+                background: activeTab === tab ? 'var(--ink-3)' : 'transparent',
+                color: activeTab === tab ? 'var(--text)' : 'var(--text-3)',
+                fontSize: 13, fontWeight: activeTab === tab ? 500 : 400,
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                transition: 'all var(--transition)', position: 'relative'
+              }}
+            >
               {tab}
               {activeTab === tab && (
                 <div style={{
@@ -252,16 +265,32 @@ export default function WorkspacePage({
             </button>
           ))}
 
-          {activeVideo && (
-            <div style={{ marginLeft: 'auto', marginRight: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              {activeVideo.thumbnail && (
-                <img src={activeVideo.thumbnail} alt="" style={{ width: 22, height: 15, objectFit: 'cover', borderRadius: 3 }} />
-              )}
-              <span style={{ fontSize: 11, color: 'var(--text-3)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {activeVideo.video_title}
-              </span>
-            </div>
-          )}
+          {/* right side of tab bar */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, marginRight: 4 }}>
+            {/* transcript download — visible when a video is loaded */}
+            {activeVideo && activeVideo.status === 'ready' && (
+              <TranscriptDownloadInline video={activeVideo} />
+            )}
+
+            {/* active video badge */}
+            {activeVideo && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                {activeVideo.thumbnail && (
+                  <img
+                    src={activeVideo.thumbnail} alt=""
+                    style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 3 }}
+                  />
+                )}
+                <span style={{
+                  fontSize: 11, color: 'var(--text-3)',
+                  maxWidth: 150, overflow: 'hidden',
+                  textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                }}>
+                  {activeVideo.video_title}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* tab content */}
@@ -279,8 +308,12 @@ export default function WorkspacePage({
             textAlign: 'center', pointerEvents: 'none'
           }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>📺</div>
-            <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 6 }}>No videos loaded</p>
-            <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Click "+ Add Video" to get started</p>
+            <p style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 6 }}>
+              No videos loaded
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
+              Click "+ Add Video" to get started
+            </p>
           </div>
         )}
       </div>
@@ -306,5 +339,64 @@ export default function WorkspacePage({
         />
       )}
     </div>
+  )
+}
+
+// ── inline transcript download button for the tab bar ──
+function TranscriptDownloadInline({ video }) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleDownload() {
+    if (!video?._url || loading) return
+    setLoading(true)
+    try {
+      const { getTranscript } = await import('../services/api')
+      const data = await getTranscript(video._url)
+      const blob = new Blob([data.transcript_text], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${(video.video_title || 'transcript').slice(0, 40).replace(/[^a-z0-9]/gi, '_')}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // silent fail — not critical
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={loading}
+      title="Download transcript as .txt"
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        height: 28, padding: '0 10px',
+        borderRadius: 'var(--radius-sm)',
+        border: '1px solid var(--border-md)',
+        background: 'transparent',
+        color: 'var(--text-3)', fontSize: 11,
+        cursor: loading ? 'not-allowed' : 'pointer',
+        fontFamily: 'var(--font-sans)',
+        transition: 'all var(--transition)',
+        whiteSpace: 'nowrap'
+      }}
+      onMouseEnter={e => {
+        if (!loading) {
+          e.currentTarget.style.borderColor = 'var(--border-lg)'
+          e.currentTarget.style.color = 'var(--text)'
+        }
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = 'var(--border-md)'
+        e.currentTarget.style.color = 'var(--text-3)'
+      }}
+    >
+      {loading ? '⟳' : '↓'} Transcript
+    </button>
   )
 }
