@@ -2,8 +2,6 @@
 
 AI-powered multi-video understanding and retrieval system for extracting insights from YouTube videos through semantic search, summarization, comparison, and study workflows.
 
-🔗 Live Demo: [https://video-rag-five.vercel.app/](https://video-rag-five.vercel.app/)
-
 ---
 
 ## Overview
